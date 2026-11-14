@@ -379,7 +379,7 @@
   .cm-meta{font-size:12px;color:var(--muted);margin-top:4px}
   .cm-tools{position:absolute;right:8px;top:6px;display:flex;gap:4px}
   .cm-tools button{width:26px;height:26px;border-radius:50%;border:0;background:rgba(0,0,0,.65);color:#fff;cursor:pointer;font-size:12px}
-  #cmVids{position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none}
+  #cmVids,#vsVids{position:fixed;left:0;top:0;width:2px;height:2px;overflow:hidden;opacity:.01;pointer-events:none}
   @media (max-width:560px){.cm-card{grid-template-columns:1fr}.cm-card video{width:100%;height:150px}}
   .mic-btn.pv{right:340px}
   #pvSetup{display:none;flex-direction:column;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:22px 18px 80px}
@@ -743,7 +743,7 @@
         <label class="mg-f">Green line under the title<input id="vsSub" class="mg-in" type="text" maxlength="30" value="MY RANKING" autocomplete="off"></label>
       </div>
       <div id="vsCards" style="margin-top:12px"></div>
-      <div id="vsVids" style="display:none"></div>
+      <div id="vsVids"></div>
       <div class="mg-help" id="vsInfo"></div>
       <p class="status" id="vsMsg"></p>
       <button class="btn primary" id="vsStart" type="button" style="margin-top:12px;width:100%">Create video ▸</button>
@@ -3384,6 +3384,10 @@ function cmRender(){
   });
   cmInfo();
 }
+function vdUnlock(vids){
+  const jobs=(vids||[]).filter(Boolean).map(v=>{try{const pr=v.play();return Promise.resolve(pr).then(()=>{try{v.pause();v.currentTime=0;}catch(e){}}).catch(()=>{});}catch(e){return Promise.resolve();}});
+  return Promise.race([Promise.all(jobs),new Promise(r=>setTimeout(r,1500))]);
+}
 function cmAttach(en,src,isFallback){
   const vid=en.vid;vid.removeAttribute('src');vid.load();
   vid.onloadedmetadata=()=>{en.err=false;en.full=vid.duration||0;en.long=en.full>20.05;en.dur=Math.min(20,en.full||20);cmRender();};
@@ -3523,7 +3527,9 @@ async function cmCreate(){
     cmEntries.forEach(e=>{if(!e.src){e.src=cmCtx.createMediaElementSource(e.vid);}try{e.src.disconnect();}catch(_){}e.src.connect(dest);});
     var audioTrack=dest.stream.getAudioTracks()[0];
   }catch(err){var audioTrack=null;}
+  const unl=vdUnlock(cmEntries.map(e=>e.vid));
   try{if(navigator.wakeLock)cmWL=await navigator.wakeLock.request('screen');}catch(e){}
+  await unl;
   const key=$('cmContest').value,year=($('cmYear').value||'').trim()||'2026';
   let t=2.8;const segs=[{type:'title',st:0,en:2.8}];
   for(const e of cmEntries){
@@ -3593,7 +3599,9 @@ async function vsCreate(){
     vsE.forEach(e=>{if(!e.src){e.src=cmCtx.createMediaElementSource(e.vid);}try{e.src.disconnect();}catch(_){}e.src.connect(dest);});
     var audioTrack=dest.stream.getAudioTracks()[0];
   }catch(err){var audioTrack=null;}
+  const unl=vdUnlock(vsE.map(e=>e.vid));
   try{if(navigator.wakeLock)cmWL=await navigator.wakeLock.request('screen');}catch(e){}
+  await unl;
   let t=2.8;const segs=[{type:'title',st:0,en:2.8}];
   for(const e of vsE.slice().sort((a,b)=>b.place-a.place)){
     const pc=PART_COUNTRIES.find(x=>x.code===e.code),name=pc?pc.name:e.code;
@@ -4056,7 +4064,7 @@ $('rvFile').addEventListener('change',async e=>{
   if(it.kind==='photo'){const r=await vdLoadFile(f);if(!r){$('rvMsg').textContent='That photo could not be read.';return;}it.img=r.img;it.pUrl=r.url;it.pName=f.name;$('rvMsg').textContent='';rvShow(rv.step);return;}
   if(it.vid&&it.vid.parentNode)it.vid.parentNode.removeChild(it.vid);
   const url=URL.createObjectURL(f),vid=document.createElement('video');vid.preload='auto';vid.muted=false;vid.playsInline=true;vid.setAttribute('playsinline','');
-  vid.style.cssText='position:fixed;left:-9999px;width:2px;height:2px';document.body.appendChild(vid);
+  vid.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';document.body.appendChild(vid);
   Object.assign(it,{vid,url,file:f,name:f.name,full:0,dur:0,err:false,src:null});
   rvAttach(it,url,false);$('rvVInfo').textContent='Reading the video …';
 });
@@ -4087,7 +4095,9 @@ async function rvCreate(){
     for(let p=1;p<=n;p++){const it=rv.items[p];if(it.kind==='photo')continue;it.src=rvCtx.createMediaElementSource(it.vid);it.gain=rvCtx.createGain();it.src.connect(it.gain);it.gain.connect(dest);}
     var audioTrack=dest.stream.getAudioTracks()[0];
   }catch(err){var audioTrack=null;}
+  const unl=vdUnlock(Array.from({length:n},(_,k)=>rv.items[k+1]).filter(it=>it&&it.kind!=='photo').map(it=>it.vid));
   try{if(navigator.wakeLock)cmWL=await navigator.wakeLock.request('screen');}catch(e){}
+  await unl;
   const segs=[];let t=0;
   for(let k=0;k<n;k++){const place=n-k,it=rv.items[place],d=Math.min(5,it.dur||5);
     const ph=it.kind==='photo';let buf=null;
@@ -4157,7 +4167,7 @@ function spAttach(src,fb){
 }
 $('spVideo').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   if(sp.vid&&sp.vid.parentNode)sp.vid.parentNode.removeChild(sp.vid);
-  const vid=document.createElement('video');vid.preload='auto';vid.playsInline=true;vid.setAttribute('playsinline','');vid.style.cssText='position:fixed;left:-9999px;width:2px;height:2px';document.body.appendChild(vid);
+  const vid=document.createElement('video');vid.preload='auto';vid.playsInline=true;vid.setAttribute('playsinline','');vid.style.cssText='position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none';document.body.appendChild(vid);
   sp.vid=vid;sp.file=f;sp.src=null;sp.err=false;$('spVInfo').textContent='Reading the video …';spAttach(URL.createObjectURL(f),false);});
 function spPalette(img){
   try{const c=document.createElement('canvas');c.width=40;c.height=28;const x=c.getContext('2d');x.drawImage(img,0,0,40,28);const d=x.getImageData(0,0,40,28).data,m={};
@@ -4179,7 +4189,9 @@ $('spGo').addEventListener('click',async()=>{
   let audioTrack=null,gain=null;
   try{const AC=window.AudioContext||window.webkitAudioContext;rvCtx=new AC();if(rvCtx.resume)rvCtx.resume();const dest=rvCtx.createMediaStreamDestination();
     if(!sp.src)sp.src=rvCtx.createMediaElementSource(sp.vid);gain=rvCtx.createGain();sp.src.connect(gain);gain.connect(dest);audioTrack=dest.stream.getAudioTracks()[0];}catch(e){audioTrack=null;}
+  const unl=vdUnlock([sp.vid]);
   try{if(navigator.wakeLock)cmWL=await navigator.wakeLock.request('screen');}catch(e){}
+  await unl;
   const code=$('spCountry').value,heart=HEART_IMG[code]?await loadImg(HEART_IMG[code]):null,lk=$('spLogo').value;
   let logo=null;try{logo=lk==='text'?null:await rkLogoCanvas(lk,code);}catch(e){}
   const flag=await rkFlagImg(code),pal=flag?spPalette(flag):['#c8102e','#8a0c20'];
