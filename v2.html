@@ -481,10 +481,10 @@
   #coFmtBox{position:fixed;inset:0;z-index:96;background:rgba(5,2,18,.8);display:none;align-items:center;justify-content:center}
   #coFmtBox.show{display:flex}
   .cf-card{background:#1a0a22;border:1px solid rgba(232,196,90,.4);border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:10px;width:min(320px,88vw);color:#fff;text-align:center}
-  #vdSaveView{position:fixed;inset:0;z-index:97;background:rgba(5,2,18,.96);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;color:#fff;text-align:center}
+  #vdSaveView{position:fixed;inset:0;z-index:97;background:#050212;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;color:#fff;text-align:center}
   #vdSaveView.show{display:flex}
   #vdSaveVid{max-width:94vw;max-height:62vh;border-radius:10px;background:#000;-webkit-touch-callout:default}
-  #coShotView{position:fixed;inset:0;z-index:95;background:rgba(5,2,18,.94);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;color:#fff;text-align:center}
+  #coShotView{position:fixed;inset:0;z-index:95;background:#050212;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:16px;box-sizing:border-box;color:#fff;text-align:center}
   #coShotView.show{display:flex}
   #coShotView img{max-width:94vw;max-height:70vh;width:auto;height:auto;-webkit-touch-callout:default;-webkit-user-select:auto;user-select:auto;border-radius:10px;box-shadow:0 8px 30px rgba(0,0,0,.6)}
   .co-head{width:100%;box-sizing:border-box;padding:2.2vh 170px 0 3vw;display:flex;align-items:center;justify-content:space-between;gap:2vw;flex-wrap:wrap;flex:none}
@@ -647,6 +647,7 @@
 .bc-up{margin-top:14px;padding:10px;border-radius:12px;background:rgba(127,127,127,.1)}
   #menu .kicker,#menu h1,#menu .sub,#menu .host,#menu .recent,#menu .grp,#menu .grp-list{display:none!important}
   #menu .shows{margin-top:84px}
+  #coLast,#sbLast{display:none!important}
 </style>
 </head>
 <body>
@@ -2788,7 +2789,7 @@ async function vdCreate(opts){
   vdPlayLive(async()=>{
     if(rec&&rec.state!=='inactive'){rec.stop();await finished;vdBlob=new Blob(chunks,{type:(rec.mimeType||mime||'video/webm').split(';')[0]});vdFile=new File([vdBlob],(vdRun.sp?'support-video.':vdRun.rv?'top-vs-predictions.':vdRun.mode==='clips'?'recap.':vdRun.mode==='pcv'?'participation.':'photo-tour.')+(vdBlob.type.includes('mp4')?'mp4':'webm'),{type:vdBlob.type});}
     if(!$('vdStage').classList.contains('show'))return;
-    if(vdRun.mode==='clips'||vdRun.mode==='pcv'){if(vdRun.mode==='clips')cmFinish();else{try{if(cmWL){cmWL.release();cmWL=null;}}catch(e){}}vdShow('',{});if(vdFile)vdShowSave(vdFile,'Your video is ready. Tap "Save Video" and choose "Save Video" in the menu. If that does not open, press and hold the video or use Download (in the app preview saving is blocked - open this page in Safari).');else{$('vdStatus').textContent='The video could not be recorded in this browser.';}return;}
+    if(vdRun.mode==='clips'||vdRun.mode==='pcv'){if(vdRun.mode==='clips')cmFinish();else{try{if(cmWL){cmWL.release();cmWL=null;}}catch(e){}}vdShow('',{});if(vdFile)vdShowSave(vdFile,'Your video is ready. Tap "Save Video" and choose "Save Video" in the menu. If that does not open, press and hold the video or use Download'+((window.claude&&claude.use)?' (in the app preview saving is blocked - open this page in Safari).':'.'));else{$('vdStatus').textContent='The video could not be recorded in this browser.';}return;}
     vdWaitThenPlay();
   },p=>{$('vdBar').style.width=Math.round(p*100)+'%';$('vdStatus').textContent=`Generating your video … ${Math.round(p*100)}%`;});
 }
@@ -2810,6 +2811,7 @@ $('vdPlayNow').addEventListener('click',()=>{vdPlayFull();});
 $('vdReplay').addEventListener('click',()=>{vdPlayFull();});
 $('vdStage').addEventListener('click',e=>{if($('vdStage').classList.contains('full')&&!e.target.closest('button'))$('vdStage').classList.toggle('hud');});
 function vdShowSave(f,msg){
+  try{$('coShotView').classList.remove('show');}catch(e){}
   const v=$('vdSaveVid');if(v._u)URL.revokeObjectURL(v._u);v._u=URL.createObjectURL(f);v.src=v._u;
   $('vdSaveDl').href=v._u;$('vdSaveDl').download=f.name;$('vdSaveMsg').textContent=msg;$('vdSaveView').classList.add('show');v.play().catch(()=>{});
 }
@@ -2818,7 +2820,7 @@ $('vdSave').addEventListener('click',async()=>{
   try{
     if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[f]}))){await navigator.share({files:[f],title:'Photo tour'});return;}   // iPhone: choose "Save Video"
   }catch(e){if(e&&e.name==='AbortError')return;}
-  vdShowSave(f,'Tap "Save Video" below and choose "Save Video" in the menu. If that does not open: press and hold the video, or use Download. In the app preview saving is blocked - open this page in Safari.');
+  vdShowSave(f,'Tap "Save Video" below and choose "Save Video" in the menu. If that does not open: press and hold the video, or use Download. '+((window.claude&&claude.use)?'In the app preview saving is blocked - open this page in Safari.':''));
 });
 $('vdSaveShare').addEventListener('click',async()=>{
   const f=vdFile;if(!f)return;
@@ -3749,7 +3751,7 @@ function pvBegin(){
       if(id!==pvPlayId)return;pvRec=null;
       try{if(cmWL){cmWL.release();cmWL=null;}}catch(e){}
       $('vdStage').classList.remove('pvplay');
-      if(vdFile)vdShowSave(vdFile,'Your video is ready. Tap "Save Video" and choose "Save Video" in the menu. If that does not open, press and hold the video or use Download (in the app preview saving is blocked - open this page in Safari).');
+      if(vdFile)vdShowSave(vdFile,'Your video is ready. Tap "Save Video" and choose "Save Video" in the menu. If that does not open, press and hold the video or use Download'+((window.claude&&claude.use)?' (in the app preview saving is blocked - open this page in Safari).':'.'));
       else pvGate('The video could not be recorded in this browser, but you can play it again.',{start:'Play again'});
     })();
   })(t0);
@@ -3798,6 +3800,7 @@ function rkStoreGet(){try{return JSON.parse(localStorage.getItem(RK_STORE)||'[]'
 function rkStoreSet(a){try{localStorage.setItem(RK_STORE,JSON.stringify(a));return true;}catch(e){return false;}}
 const RK_PRE=[{name:'Eurovision Asia Rehearsal 1',fmt:'story',per:'5',logo:'asia',heart:'TH',year:'2026',contest:'',title:'MY TOP 11 (based on rehearsals, not Songs)',
   sel:['PH','VN','LA','KR','MY','TH','BD','MN','NP','BT','KH'],items:Object.fromEntries(['PH','VN','LA','KR','MY','TH','BD','MN','NP','BT','KH'].map((c,i)=>[i+1,{code:c,as:'',photo:''}])),builtin:true}];
+RK_PRE.length=0;
 const rkAll=()=>[...RK_PRE,...rkStoreGet()];
 function rkQuickUI(){const n=rk.sel.size,ok=rk.still&&rk.step===0&&n>=2&&Array.from({length:n},(_,i)=>rk.items[i+1]).every(x=>x&&x.code);$('rkQuick').style.display=ok?'':'none';}
 function rkSavedUI(sel){const a=rkAll(),el=$('rkSaved');
@@ -4479,7 +4482,7 @@ const wl={step:-1,name:'',sel:new Set(),v:{}};
 let wls={};
 try{wls=JSON.parse(localStorage.getItem('esc_wish_lists_v1')||'{}')||{};}catch(e){wls={};}
 try{const d=JSON.parse(localStorage.getItem('esc_wish_v2')||'null');if(d&&(d.sel||[]).length&&!Object.keys(wls).length){wls['My wishlist']={sel:d.sel.slice(0,40),v:d.v||{},s:{}};}}catch(e){}
-try{if(!localStorage.getItem('esc_wish_seeded_v1')){
+try{if(false){
   const A={AL:'Kejsi Tola',AM:'Maléna',AU:'G-Nat!on',AT:'Lena Schaur',AZ:'Efendi',BE:'Angéle',BG:'VICTORIA',CA:'Rêve',HR:'ANANDA',CY:'George Perris (already chosen)',DK:'Ericka Jane',EE:'Ollie',FI:'Kiki',FR:'Carla Lazzari',GE:'Katie Melua',DE:'Nina Chuba/Jeremias',GR:'ZAF',IT:'Ditonellapiaga',LV:'Tautumeitas',LT:'Silvester Belt',LU:'Irem',MT:'ATT BLXCK/Denise',MD:'Catalina Solomac',ME:'Lara Baltic',MK:'Viktorija Loba',NO:'MILEO',PL:"Alicja (bc She's back is good)",PT:'David Carreira',RO:'Emy Alupei',SM:'Idk they send always random ppl',RS:'ZEJNA',SE:"Meirar Omar (bc Zara Larson doesn't want)",CH:'Stress',UA:'Jerry Heil',GB:'The girl from ECHOVISION 09'};
   if(!wls['Wishlist 2027'])wls['Wishlist 2027']={sel:Object.keys(A),v:A,s:{wlFmt:'port',wlLogo:'esc',wlYear:'2027',wlTitle:'Wishlist',wlFoot:'ESC_LeM'}};
   localStorage.setItem('esc_wish_seeded_v1','1');localStorage.setItem('esc_wish_lists_v1',JSON.stringify(wls));}}catch(e){}
